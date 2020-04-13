@@ -1,19 +1,29 @@
-﻿using Confluent.Kafka;
 using System;
-using System.IO;
-using System.Text;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Text;
+using Confluent.Kafka;
+using Confluent.Kafka.Serialization;
 
+namespace Consumer {
+    class Program {
+        static void Main (string[] args) {
+            var config = new Dictonary<string, object> { { "group.id", "consumer-1" },
+                    { "bootstrap.servers", "localhost:9092" },
+                    { "enable.auto.commit", "false" }
+                };
 
-namespace KafkaProducerPoc
-{
-    public class Program : ReadFileProducer
-    {
-        public static async Task Main(string[] args)
-        {
-            await ProcessFile();
-            Console.ReadLine();
+            using (var consumer = new Consumer<Null, string> (config, null, new StringDeSerializer (Encoding.UTF8))) {
+                consumer.Subscribe (new string[] { "topic-1" });
+
+                consumer.OnMessage += (_, msg) => {
+                    Console.WriteLine ($"Topic: {msg.Topic}, Partition: {msg.Partition}, Offset: {msg.Offset} {msg.Value}");
+                    consumer.CommitAsync (msg);
+                };
+
+                while(true){
+                    consumer.Poll(100);
+                }
+            }
         }
     }
 }
